@@ -563,6 +563,8 @@ second_party_year_psoe_summary <- results_psoe_winner |>
 
 ggplot(second_party_year_psoe_summary, aes(x = factor(anno), y = count, fill = second_party)) +
   geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
+                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green")) +
   labs(title = "Distribution of second places by year when PSOE wins",
        x = "Year",
        y = "Number of municipalities",
@@ -578,6 +580,8 @@ second_party_year_pp_summary <- results_pp_winner |>
 
 ggplot(second_party_year_pp_summary, aes(x = factor(anno), y = count, fill = second_party)) +
   geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
+                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
   labs(title = "Distribution of second places by year when PP wins",
        x = "Year",
        y = "Number of municipalities",
@@ -591,6 +595,96 @@ He intentado hacer mapa, pero por lo que he visto no hay mapas de municipios en 
 Who benefits from low turnout?
 First of all, what is a low turnout? It makes reference to the electoral districts where the electoral participation is low. 
 
+OPTION 1: USING A FUNCTION (tarda 7 siglos)
+```{r}
+#| code-fold: true
+
+# Obtain census
+
+
+
+census_data <- final_election_data |> select(municipio, censo)
+
+
+
+# Calculate turnout by using a function
+
+
+
+calculate_turnout <- function(municipio, total_votes) {
+
+  census_value <- census_data |> filter(municipio == municipio) |> pull(censo)
+
+  if(length(census_value) == 1 && census_value > 0){
+
+    return(total_votes / census_value)
+
+  } else{
+
+    return(NA)
+
+  }
+
+}
+
+
+
+# Apply the function 
+
+
+
+votes_by_party_all <- votes_by_party_all |> 
+
+  rowwise() |> 
+
+  mutate(turnout = mapply(calculate_turnout, municipio, total_votes)) |> 
+
+  ungroup()
+
+
+
+# Classification of municipalities depending on their turnout
+
+
+
+votes_by_party_all <- votes_by_party_all |> mutate(turnout_category = case_when(
+
+  turnout < 0.4 ~ "Low",
+
+  turnout >= 0.4 & turnout <= 0.7 ~ "Medium",
+
+  turnout > 0.7 ~ "High"
+
+))
+
+
+
+# How did the parties do?
+
+
+
+performance_by_turnout <- votes_by_party_all |> 
+
+  group_by(turnout_category, party) |> 
+
+  summarise(total_votes = sum(total_votes, na.rm = TRUE),
+
+            total_census = sum(census, na.rm = TRUE)) |> 
+
+  mutate(percentage_votes = total_votes / total_census) |> 
+
+  ungroup()
+
+
+
+performance_by_turnout
+
+
+
+```
+
+OPTION 2:
+
 ```{r}
 #| code-fold: true
 
@@ -600,10 +694,11 @@ combined_data_exercise_3 <- votes_by_party_all |> left_join(final_election_data,
 
 head(combined_data_exercise_3)
 ```
+
 ```{r}
 # Calculate turnout
 
-combined_data_exercise_3 <- combined_data_exercise_3 |> mutate(turnou = total_votes / censo)
+combined_data_exercise_3 <- combined_data_exercise_3 |> mutate(turnout = total_votes / censo)
 
 ```
 
@@ -628,31 +723,210 @@ performance_by_turnout <- combined_data_exercise_3 |>
   mutate(percentage_votes = total_votes / total_census) |> 
   ungroup()
 
-performance_by_turnout
+```
+
+OPTION 3: MÁS MANUAL, ES EL UNICO QUE ME VA A MÍ PORQUE MI ORDENADOR ES ESPECIAL
+
+```{r}
+# Order by municipality
+
+votes_by_party_all <- votes_by_party_all[order(votes_by_party_all$municipio), ]
+final_election_data <- final_election_data[order(final_election_data$municipio), ]
+
 
 ```
 
 ```{r}
-# Visualization 
-ggplot(performance_by_turnout, aes(x = turnout_category, y = percentage_votes, fill = party)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "How parties do depending on turnout",
-       x = "Turnout level",
-       y = "Percentage of votes",
+# Create a vector with the total census of each municipality
+census_by_municipality <- final_election_data$censo[match(votes_by_party_all$municipio, final_election_data$municipio)]
+```
+
+
+```{r}
+# Calculate turnout
+
+turnout <- votes_by_party_all$total_votes / census_by_municipality
+
+```
+
+```{r}
+turnout_category <- ifelse(turnout < 0.4, "Low",
+                           ifelse(turnout <= 0.7, "Medium", "High"))
+```
+
+Now let´s go with the analysis
+
+```{r}
+votes_by_party_all$turnout_category <- turnout_category
+```
+
+```{r}
+# Filtrate only municipalities with kow turnout
+
+low_turnout_results <- votes_by_party_all[votes_by_party_all$turnout_category == "Low", ]
+
+```
+
+```{r}
+# Identify parties that obtained more votes in those municipalities
+
+low_turnout_winners <- low_turnout_results |> 
+  group_by(municipio) |> 
+  filter(total_votes == max(total_votes)) |> 
+  ungroup()
+
+low_turnout_winners
+
+```
+
+```{r}
+# Graph 1
+
+party_counts <- low_turnout_winners |> 
+  group_by(party) |> 
+  summarise(municipalities_won = n()) |> 
+  ungroup()
+
+library(ggplot2)
+
+ggplot(party_counts, aes(x = reorder(party, -municipalities_won), y = municipalities_won, fill = party)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
+                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
+  labs(title = "Municipalities won by party in areas of low turnout",
+       x = "Party",
+       y = "Municipalities (number)",
+       fill = "Party") +
+  theme_minimal() 
+
+```
+```{r}
+#Graph 2
+
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+spain_map <- ne_states(country = "Spain", returnclass = "sf")
+
+map_data <- spain_map |> 
+  left_join(low_turnout_winners, by = c("name" = "municipio"))
+
+ggplot(map_data) +
+  geom_sf(aes(fill = party)) +
+  labs(title = "Parties that won in low turnout areas",
        fill = "Party") +
   theme_minimal()
 ```
+
+```{r}
+# Graph 3: 
+
+party_counts2 <- low_turnout_winners |> 
+  group_by(party, anno) |> 
+  summarise(municipalities_won = n()) |> 
+  ungroup()
+
+library(ggplot2)
+
+ggplot(party_counts2, aes(x = reorder(party, -municipalities_won), y = municipalities_won, fill = as.factor(anno))) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
+                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
+  labs(title = "Municipalities won by party in areas of low turnout",
+       x = "Party",
+       y = "Municipalities (number)",
+       fill = "Party") +
+  theme_minimal() 
+
+```
+
 
 ### Question 4
 
 How to analyze the relationship between census and vote? Is it true that certain parties win in rural areas?
 
+OPTION 1: No me deja porque sorpresa, Mac es una mierda, pero os dejo aquí como hacerlo por si alguna puede ejecutarlo
+
 ```{r}
 #| code-fold: true
 
+final_election_data$zone_type <- ifelse(final_election_data$censo < 10000, "Rural", "Urban")
 
 ```
 
+```{r}
+
+votes_by_party_exercise_4 <- votes_by_party_all[, c("municipio", "party", "anno", "total_votes")]
+election_data_exercise_4 <- final_election_data[, c("municipio", "censo", "anno", "party", "zone_type")]
+
+votes_with_census <- merge(votes_by_party_exercise_4, election_data_exercise_4, by = c("municipio", "anno", "party"))
+
+```
+
+```{r}
+# Create a new variable of proportion of votes
+
+votes_with_census$vote_share <- votes_with_census$total_votes / ave(votes_with_census$total_votes, votes_with_census$municipio, FUN = sum)
+
+```
+
+```{r}
+# Visualization of relationship between census and proportion of votes
+
+library(ggplot2)
+
+ggplot(votes_with_census, aes(x = censo, y = vote_share, color = party)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relation census and vote",
+       x = "Census",
+       y = "Proportion of votes",
+       color = "Party") +
+  theme_minimal()
+
+```
+
+```{r}
+# Calculate correlation
+
+correlation_analysis <- cor(votes_with_census$censo, votes_with_census$vote_share, use = "complete.obs")
+
+correlation_analysis
+
+# The closer to 1 or -1, the stronger the relationship of correlation
+```
+
+Now we should be able to analyse how different parties do in rural areas
+
+```{r}
+zone_analysis <- aggregate(vote_share ~ zone_type + party, data = votes_with_census, FUN = mean)
+
+zone_analysis
+```
+
+```{r}
+# Visualization
+
+ggplot(zone_analysis, aes(x = zone_type, y = vote_share, fill = party)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of votes by party in rural and urban areas",
+       x = "Type of area",
+       y = "Proportion of votes",
+       fill = "Party") +
+  theme_minimal()
+```
+
+```{r}
+# Finally, we have to identify the party that wins the most in rural areas
+
+rural_analysis <- subset(votes_with_census, zone_type == "Rural")
+
+top_party_rural <- rural_analysis[which.max(rural_analysis$vote_share), ]
+
+top_party_rural
+
+```
 
 ### Question 5
 
