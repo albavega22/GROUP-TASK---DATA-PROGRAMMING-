@@ -1,6 +1,6 @@
 ---
 title: "Group Task"
-author: "Mencía Gómez Luna (DNI: 05468738-M), Laura Toro Iglesias (DNI: 06591204-W), Alba García Vega (DNI: 71904192M)"
+author: "Mencía Gómez Luna (DNI: 05468738-M), Laura Toro Iglesias (DNI: 06591204-W), Alba García Vega (DNI: 71904192M), Julia Martyniewicz(DNI: CAJ641749)"
 format:
   html:
     theme: [style.scss]
@@ -938,32 +938,159 @@ How to calibrate the error of the polls (remember that the polls are voting inte
 
 ```
 
-
-### Question 6
-
-Which polling houses got it right the most and which ones deviated the most from the results?
-
 ```{r}
 #| code-fold: true
+library(dplyr)
+library(stringr)
+library(lubridate)
 
+# First, let's compute the total votes for each party in each election
+total_votes_by_party <- final_election_data |>
+  group_by(anno, mes, party) |>
+  summarize(total_ballots = sum(ballots, na.rm = TRUE), .groups = "drop") |> 
+   group_by(anno, mes) |> 
+   mutate(total_ballots_election = sum(total_ballots, na.rm = TRUE)) |> 
+    ungroup() |> 
+   mutate(real_percentage = total_ballots / total_ballots_election) |> 
+  select(anno, mes, party, real_percentage) |> 
+  mutate(mes = as.integer(mes)) # Convert mes to integer (there was a problem without it before)
+
+# Now, let's average survey data for each party for each election
+survey_estimates <- final_survey_data |>
+  filter(!is.na(estimated_voting)) |> 
+  group_by(date_elec, party) |>
+  summarize(mean_estimated_voting = mean(estimated_voting, na.rm = TRUE), .groups = "drop")|>
+   mutate(anno = year(date_elec), mes = month(date_elec)) |> 
+    select(anno, mes, party, mean_estimated_voting)
+
+# Now we'll merge the two datasets (election results and survey estimates)
+# Before, we change some party names so they fit
+survey_estimates <- survey_estimates |> 
+  mutate(party = case_when(
+    party == "CIUDADANOS PARTIDO DE LA CIUDADANÍA" ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+    party == "PARTIDO POPULAR" ~ "PARTIDO POPULAR",
+    party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL" ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+    party == "UNIDAS PODEMOS-IU" ~ "PODEMOS-IU",
+    party == "VOX" ~ "VOX",
+        party == "EH-BILDU" ~ "EH BILDU",
+    TRUE ~ party
+  ))
+
+#Merge
+poll_error_data <- left_join(total_votes_by_party, survey_estimates, by = c("anno", "mes", "party"))
+
+# Calculate the absolute error for each survey for each party
+poll_error_data <- poll_error_data |> 
+  mutate(error_percentage = abs(real_percentage - (mean_estimated_voting/100)))
+
+# Print the data with the error (see the table above)
+print(poll_error_data)
 
 ```
 
+### Question 6
+
+Which polling houses got it right the most and which ones deviated the most from the results? Check if works
+
+```{r}
+#| code-fold: true
+library(dplyr)
+
+#'final_survey_data' and 'final_election_data' are available from the previous steps
+
+# 1. Calculate real vote percentages from election data
+real_votes <- final_election_data |>
+  group_by(anno, mes, party) |>
+  summarize(total_ballots = sum(ballots, na.rm = TRUE), .groups = "drop") |>
+    group_by(anno, mes) |>
+      mutate(total_ballots_election = sum(total_ballots, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(real_percentage = total_ballots / total_ballots_election) |>
+  select(anno, mes, party, real_percentage) |>
+    mutate(mes = as.integer(mes)) # Convert mes to integer
+
+
+# 2. Join real vote percentages with survey data
+# Adjust party names in survey data to match election data before the join
+final_survey_data_adjusted <- final_survey_data |>
+    mutate(party = case_when(
+        party == "CIUDADANOS PARTIDO DE LA CIUDADANÍA" ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+        party == "PARTIDO POPULAR" ~ "PARTIDO POPULAR",
+        party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL" ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+        party == "UNIDAS PODEMOS-IU" ~ "PODEMOS-IU",
+        party == "VOX" ~ "VOX",
+        party == "EH-BILDU" ~ "EH BILDU",
+        TRUE ~ party
+      )) |>
+    mutate(mes = month(date_elec), anno= year(date_elec))
+
+
+survey_with_real <- final_survey_data_adjusted |>
+  left_join(real_votes, by = c("anno", "mes", "party"))
+
+# 3. Calculate the error for each pollster
+pollster_error <- survey_with_real |>
+  group_by(pollster) |>
+  summarize(average_error = mean(abs(estimated_voting - (real_percentage * 100)), na.rm = TRUE), .groups = "drop")
+
+# 4. Identify the pollsters with the smallest average error (most accurate)
+best_pollsters <- pollster_error |>
+  arrange(average_error)
+
+# 5. Identify the pollsters with the biggest average error (least accurate)
+worst_pollsters <- pollster_error |>
+  arrange(desc(average_error))
+
+# 6. Print the results
+print("Best Polling Houses (Most Accurate):")
+print(head(best_pollsters))
+print("Worst Polling Houses (Least Accurate):")
+print(head(worst_pollsters))
+```
 
 ### Original Question 1
 
 ```{r}
 #| code-fold: true
+# 1. Prepare Election Data
+election_data_turnout <- final_election_data |>
+  filter(tipo_eleccion == "02") |> #Filter for congressional elections
+  mutate(election_year = year(make_date(anno, mes))) #Extract election year
 
+# 2. Calculate Total Census and Votes per Year
+turnout_by_year <- election_data_turnout |>
+    group_by(election_year) |>
+    summarise(
+      total_census = sum(censo, na.rm = TRUE),  # Calculate total census
+      total_votes = sum(votos_candidaturas, na.rm = TRUE) + sum(votos_blancos, na.rm = TRUE), #Calculate total valid votes
+        .groups = "drop"
+        )
 
-```
+# 3. Calculate Turnout Percentage
+turnout_by_year <- turnout_by_year |>
+    mutate(turnout_percentage = (total_votes / total_census) * 100) 
 
-### Original Question 2
+# 4. Display Results (just in case)
+print("Voter Turnout by Year:")
+print(turnout_by_year)
 
-```{r}
-#| code-fold: true
-
-
+# 5. Visualize Results
+ggplot(turnout_by_year, aes(x = election_year, y = turnout_percentage)) +
+  geom_line(color = "darkblue", linewidth = 1.2) +
+  geom_point(color = "darkblue", size = 3) +
+    geom_text(aes(label = sprintf("%.1f%%", turnout_percentage), # Add text labels with percentage
+                vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)), # Adjust vjust for 2011 and 2016
+               size = 3, color = "darkblue") + 
+  scale_x_continuous(breaks = unique(turnout_by_year$election_year)) +
+  scale_y_continuous(limits = c(65, 80), breaks = seq(65, 80, 5), expand = c(0,0)) +
+    labs(title = "Turnout Percentage in Spanish Congressional Elections (2008-2019)",
+         x = "Election Year",
+         y = "Turnout Percentage") +
+  theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+         panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+          panel.grid.minor.y = element_blank())
 ```
 
 ### Original Question 3
