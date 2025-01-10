@@ -803,9 +803,7 @@ print(head(worst_pollsters))
 And the worst were: MYWORD, HAMALGAMA MÉTRICA ans SW DEMOSCOPIA where the pollster's estimates were, on average, 7.5 percentage points different from the actual results.
 
 ### Original Question 1
-How did voter turnout in Spanish congressional elections change over the period from 2008 to 2019?
-
-This R code processes and visualizes voter turnout data for Spanish congressional elections. First, it filters the election data to focus only on congressional elections and extracts the election year. Then, it calculates the total census and total votes for each election year. Next, it computes the turnout percentage by dividing total votes by the total census for each year. Finally, it visualizes the turnout trends over time using a line plot, showing how voter participation has changed across different election years.
+Q Julia ponga la pregunta exacta pero es sobre PARTICIPACIÓN
 
 ```{r}
 #| code-fold: true
@@ -940,4 +938,71 @@ ggplot(table_long, aes(x = party, y = percentage, fill = type)) +
   )
 ```
 
-### Original Question $: algún tipo de loop con final_surveys
+### Original Question: esto es lo que mando Julia por el grupo para ver si funcionaba
+
+```{r}
+library(patchwork)
+
+
+# 1. Calculate Total Votes, Blank and Null Votes per Year
+votes_by_year <- election_data_turnout |>
+  group_by(election_year) |>
+  summarise(
+    total_votes = sum(votos_candidaturas, na.rm = TRUE) + sum(votos_blancos, na.rm = TRUE) + sum(votos_nulos, na.rm = TRUE),
+    total_blank_votes = sum(votos_blancos, na.rm = TRUE),
+    total_null_votes = sum(votos_nulos, na.rm = TRUE),
+        .groups = "drop"
+  )
+
+# 2. Calculate Percentages of Blank and Null Votes
+votes_by_year <- votes_by_year |>
+  mutate(
+    blank_percentage = (total_blank_votes / total_votes) * 100,
+    null_percentage = (total_null_votes / total_votes) * 100
+  )
+
+# 3. Create Blank Votes Plot
+plot_blancos <- ggplot(votes_by_year, aes(x = election_year, y = blank_percentage)) +
+  geom_line(color = "darkgreen", linewidth = 1.2) +
+  geom_point(color = "darkgreen", size = 3) +
+  geom_text(aes(label = sprintf("%.1f%%", blank_percentage),
+                 vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)),
+                 size = 3, color = "darkgreen") + 
+  scale_x_continuous(breaks = unique(votes_by_year$election_year)) +
+  scale_y_continuous(limits = c(0, 3), breaks = seq(0, 3, 1), expand = c(0,0)) +
+  labs(title = "Blank Votes Percentage",
+       x = "Election Year",
+       y = "Percentage") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+        panel.grid.minor.y = element_blank())
+
+# 4. Create Null Votes Plot
+plot_nulos <- ggplot(votes_by_year, aes(x = election_year, y = null_percentage)) +
+  geom_line(color = "darkred", linewidth = 1.2) +
+  geom_point(color = "darkred", size = 3) +
+  geom_text(aes(label = sprintf("%.1f%%", null_percentage),
+                 vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)),
+                 size = 3, color = "darkred") + 
+  scale_x_continuous(breaks = unique(votes_by_year$election_year)) +
+    scale_y_continuous(limits = c(0, 3), breaks = seq(0, 3, 1), expand = c(0,0)) +
+  labs(title = "Null Votes Percentage",
+       x = "Election Year",
+       y = "Percentage") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+        panel.grid.minor.y = element_blank())
+
+
+# 5. Combine and display plots
+combined_plot <- plot_blancos + plot_nulos + plot_layout(ncol = 2) # Arrange vertically
+
+
+print(combined_plot) # Display the combined plot
+```
+
+
