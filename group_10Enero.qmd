@@ -803,7 +803,9 @@ print(head(worst_pollsters))
 And the worst were: MYWORD, HAMALGAMA MÉTRICA ans SW DEMOSCOPIA where the pollster's estimates were, on average, 7.5 percentage points different from the actual results.
 
 ### Original Question 1
-Q Julia ponga la pregunta exacta pero es sobre PARTICIPACIÓN
+How did voter turnout in Spanish congressional elections change over the period from 2008 to 2019?
+
+This R code processes and visualizes voter turnout data for Spanish congressional elections. First, it filters the election data to focus only on congressional elections and extracts the election year. Then, it calculates the total census and total votes for each election year. Next, it computes the turnout percentage by dividing total votes by the total census for each year. Finally, it visualizes the turnout trends over time using a line plot, showing how voter participation has changed across different election years.
 
 ```{r}
 #| code-fold: true
