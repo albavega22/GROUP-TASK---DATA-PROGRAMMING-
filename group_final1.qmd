@@ -1,0 +1,1180 @@
+---
+title: "Group Task"
+author: "Mencía Gómez Luna (DNI: 05468738-M), Laura Toro Iglesias (DNI: 06591204-W), Alba García Vega (DNI: 71904192M), Julia Martyniewicz(DNI: CAJ641749)"
+format:
+  revealjs: 
+    transition: fade
+    smaller: true
+    theme: simple
+    embed-resources: true
+execute:
+  echo: true
+
+---
+
+## Instructions (read before starting)
+
+-   Modify within the `.qmd` document your personal data (names and ID) located in the header of the file.
+
+-   Make sure, **BEFORE further editing** the document, that the `.qmd` file is rendered correctly and the corresponding `.html` is generated in your local folder on your computer.
+
+-   The chunks (code boxes) created are either empty or incomplete. Once you edit what you consider, you must change each chunk to `#| eval: true` (or remove it directly) for them to run.
+
+-   Remember that you can run chunk by chunk with the *play* button or run all chunks up to a given chunk (with the button to the left of the previous one).
+
+### Required packages
+
+> Insert in the lower chunk the packages you will need
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(stringi)
+library(stringr)
+library(sf)
+library(ggplot2)
+library(forcats)
+library(tidyr)
+library(patchwork)
+library(glue)
+```
+
+---
+
+## Group task
+
+### Data
+
+The practice will be based on the **electoral data archives** below, compiling data on elections to the Spanish Congress of Deputies from 2008 to the present, as well as surveys, municipalities codes and abbreviations.
+
+```{r}
+# NO TOQUES NADA
+election_data <- read_csv(file = "./data/datos_elecciones_brutos.csv")
+cod_mun <- read_csv(file = "./data/cod_mun.csv")
+surveys <- read_csv(file = "./data/historical_surveys.csv")
+abbrev <- read_csv(file = "./data/siglas.csv")
+```
+
+---
+
+The data will be as follows:
+
+-   `election_data`: file with election data for Congress from 2008 to the last ones in 2019.
+
+    -   `tipo_eleccion`: type of election (02 if congressional election)
+    -   `anno`, `mes`: year and month of elections
+    -   `vuelta`: electoral round (1 if first round)
+    -   `codigo_ccaa, codigo_provincia, codigo_municipio, codigo_distrito_electoral`: code of the ccaa, province, municipality and electoral district.
+    -   `numero_mesas`: number of polling stations
+    -   `censo`: census
+    -   `participacion_1, participacion_2`: participation in the first preview (14:00) and second preview (18:00) before polls close (20:00)
+    -   `votos_blancos`: blank ballots
+    -   `votos_candidaturas`: party ballots
+    -   `votos_nulos`: null ballots
+    -   ballots for each party
+
+---
+
+-   `cod_mun`: file with the codes and names of each municipality
+
+-   `abbrev`: acronyms and names associated with each party
+
+-   `surveys`: table of electoral polls since 1982. Some of the variables are the following:
+
+    -   `type_survey`: type of survey (national, regional, etc.)
+    -   `date_elec`: date of future elections
+    -   `id_pollster`, `pollster`, `media`: id and name of the polling company, as well as the media that commissioned it.
+    -   `field_date_from`, `field_date_to`: start and end date of fieldwork
+    -   `exit_poll`: whether it is an exit poll or not
+    -   `size`: sample size
+    -   `turnout`: turnout estimate
+    -   estimated voting intentions for the main parties
+
+---
+
+### Objectives and mandatory items
+
+The objective of the delivery is to perform an analysis of the electoral data, carrying out the debugging, summaries and graphs you consider, both of their results and the accuracy of the electoral polls.
+
+Specifically, **you must work only in the time window that includes the elections from 2008 to the last elections of 2019**.
+
+---
+
+#### General comments
+
+In addition to what you see fit to execute, the following items are mandatory:
+
+-   Each group should **present before 9th January (23:59) an analysis of the data** in `.qmd` and `.html` format in **Quarto slides** mode, which **will be the ones they will present on the day of the presentation**.
+
+- **Quarto slides should be uploaded to Github** (the link should be provided by a member of each group).
+
+- The **maximum number of slides** should be 40. The **maximum time for each group** will be 20-22 minutes (+5 minutes for questions).
+
+-   During the presentation you will **explain (summarised!) the analysis performed** so that **each team member speaks for a similar amount of time** and **each member can be asked about any of the steps**. The grade does not have to be the same for all members. 
+
+-   It will be valued not only the content but also the container (aesthetics).
+
+-   The **objective is to demonstrate that the maximum knowledge of the course has been acquired**: the more content of the syllabus is included, the better.
+
+---
+
+#### Mandatory items:
+
+1. Data should be **converted to tidydata** where appropriate.
+
+2. You should **include at least one join** between tables.
+
+3. Reminder: information = variance, so **remove columns that are not going to contribute anything**.
+
+4. The **glue and lubridate** packages should be used at some point, as well as the **forcats**. The use of **ggplot2** will be highly valued.
+
+5. The following should be used at least once:
+    -   mutate
+    -   summarise
+    -   group_by (or equivalent)
+    -   case_when
+
+---
+
+6. We have many, many parties running for election. **We will only be interested in the following parties**:
+
+    -   PARTIDO SOCIALISTA OBRERO ESPAÑOL (beware: it has/had federations - branches - with some other name).
+    -   PARTIDO POPULAR
+    -   CIUDADANOS (caution: has/had federations - branches - with some other name)
+    -   PARTIDO NACIONALISTA VASCO
+    -   BLOQUE NACIONALISTA GALLEGO
+    -   CONVERGÈNCIA I UNIÓ
+    -   UNIDAS PODEMOS - IU (beware that here they have had various names - IU, podem, ezker batua, ...- and have not always gone together, but here we will analyze them together)
+    -   ESQUERRA REPUBLICANA DE CATALUNYA
+    -   EH - BILDU (are now a coalition of parties formed by Sortu, Eusko Alkartasuna, Aralar, Alternatiba)
+    -   MÁS PAÍS
+    -   VOX
+
+7. Anything other than any of the above parties should be imputed as "OTHER". Remember to add properly the data after the previous recoding.
+
+---
+
+8.   Party acronyms will be used for the visualizations. The inclusion of graphics will be highly valued (see <https://r-graph-gallery.com/>).
+
+9. You must use all 4 data files at some point.
+
+10.  You must define at least one (non-trivial) function of your own.
+
+11.  You will have to discard mandatory polls that:
+
+    -   refer to elections before 2008
+    -   that are exit polls
+    -   have a sample size of less than 750 or are unknown
+    -   that have less than 1 or less fieldwork days
+
+---
+
+12.   You must obligatorily answer the following questions (plus those that you consider analyzing to distinguish yourself from the rest of the teams, either numerically and/or graphically)
+
+    -   Which party was the winner in the municipalities with more than 100,000 habitants (census) in each of the elections?
+    -   Which party was the second when the first was the PSOE? And when the first was the PP?
+    -   Who benefits from low turnout?
+    -   How to analyze the relationship between census and vote? Is it true that certain parties win in rural areas?
+    -   How to calibrate the error of the polls (remember that the polls are voting intentions at national level)?
+    -   Which polling houses got it right the most and which ones deviated the most from the results?
+
+**You should include at least 3 more "original" questions** that you think that it could be interesting to be answer with the data.
+
+---
+
+#### Marks
+
+**The one who does the most things will not be valued the most**. More is not always better. The **originality** (with respect to the rest of the works, for example in the analyzed or in the subject or ...) of what has been proposed, in the handling of tables (or in the visualization), the **caring** put in the delivery (care in life is important) and the **relevance** of what has been done will be valued. Once you have the mandatory items with your database more or less completed, **think before** chopping code: what could be interesting? What do I need to get a summary both numerical and visual?
+
+Remember that the real goal is to demonstrate a mastery of the tools seen throughout the course. And that happens not only by the quantity of them used but also by the quality when executing them.
+
+**Some dataviz will be extremely positive valued**.
+
+---
+
+## DATA PREPARATION
+
+First, we **convert the data to tidy data**: In both "election_data" and "surveys" databases, each party appears as a variable; so we create a new variable that unites all these parties so they appear as categories of a single variable "party", and the values appear in a new variable called "ballots" and "estimated_voting" respectively.
+
+```{r}
+#| code-fold: true
+surveys_tidy <- surveys |>
+  pivot_longer(
+    cols = 11:59,
+    names_to = "party",      
+    values_to = "estimated_voting"    
+  )
+
+election_data_tidy <- election_data |>
+  pivot_longer(
+    cols = 16:471,
+    names_to = "party",      
+    values_to = "ballots"
+  )
+
+```
+
+Now we eliminate the non relevant parties (according to points 6 and 7) for "surveys_tidy" and "election_data_tidy"
+
+For the "survey" database:
+
+```{r}
+#| code-fold: true
+important_parties <- c(
+  "PSOE", "PP", "CS", "BNG", "EAJ-PNV", "CIU", 
+  "PODEMOS", "IU", "UP", "EH-BILDU", "ERC", "VOX", "EE", "EA",
+  "EH", "PCE", "MP"
+)
+
+surveys_tidy1 <- surveys_tidy |>
+  mutate(party = case_when(
+    party %in% important_parties ~ party,  # keep important parties
+    TRUE ~ "Other"    # new category: other parties
+  )) |>
+  
+  #Change some party names
+  mutate(party = case_when(
+    party == "PODEMOS" ~ "UNIDAS PODEMOS-IU",
+    party == "IU" ~ "UNIDAS PODEMOS-IU",
+    party == "UP" ~ "UNIDAS PODEMOS-IU",
+    party == "PCE" ~ "PODEMOS-IU",
+    party == "MUC" ~ "PODEMOS-IU", # party integrated into IU but minority
+    party == "ICV" ~ "PODEMOS-IU", # Verdes in Valencia  go with "Podemos"
+    party == "EE" ~ "PSOE", # PSOE in País Vasco
+    party == "EA" ~ "EH-BILDU",
+    party == "EH" ~ "EH-BILDU",
+    party == "COMPROMIS" ~ "PODEMOS-IU",
+    party == "JXCAT-JUNTS" ~ "CIU",
+    party == "PDECAT" ~ "CIU",
+    TRUE ~ party  # keep the rest without changes
+  ))
+```
+
+---
+
+We check which parties we have eliminated from the first surveys_tidy 
+
+```{r}
+#| code-fold: true
+
+setdiff(surveys_tidy$party, surveys_tidy1$party)
+
+unique(surveys_tidy1$party)
+```
+
+We do the same for the "election_data_tidy" database.
+
+In this case we don't do it manually as before since each party has many branches, federations and coalitions, that is why we use the grepl() code. We also make sure that it catches all the parties regardless of capital letters, accents or hyphens.
+
+Additional notes:
+-Since we didn't add Junts for Convergencia i Unio (as it wasn't in the instructions), and the party dissolved in 2015, they don't get votes from 2015 onwards.
+-We noticed that in election data, Más País only has votes for the november 2019 elections, that's why it doesn't appear in other elections after we clean the data.
+
+---
+
+```{r}
+#| code-fold: true
+important_parties2 <- c("PODEMOS", "ARALAR", "EUSKO ALKARTASUNA", "EN MAREA", "EQUO",  "ESQUERRA REPUBLICANA") # exceptions that we add manually
+
+election_data_tidy1 <- election_data_tidy |>
+  mutate(party = case_when(
+    party %in% important_parties2 ~ party,            
+    grepl("PARTIDO NACIONALISTA VASCO", party, ignore.case = TRUE) ~ "PARTIDO NACIONALISTA VASCO",
+    grepl("BLOQUE NACIONALISTA GALEGO", party, ignore.case = TRUE) ~ "BLOQUE NACIONALISTA GALEGO",
+    grepl("VOX", party, ignore.case = TRUE) ~ "VOX",
+    grepl("ESQUERRA REPUBLICANA DE CATALUNYA", party, ignore.case = TRUE) ~ "ESQUERRA REPUBLICANA DE CATALUNYA",
+    grepl("CONVERGENCIA i UNIO", stri_trans_general(party, "Latin-ASCII"), ignore.case = TRUE) ~ "CONVERGÈNCIA i UNIÓ",
+    grepl("MAS PAIS", stri_trans_general(party, "Latin-ASCII"), ignore.case = TRUE) ~ "MÁS PAÍS",
+    grepl("PODEMOS|UNIDAS PODEMOS|UNIDOS PODEMOS|IZQUIERDA UNIDA|UNITS PODEM|XUNIES PODEMOS", stri_trans_general(party, "Latin-ASCII"), ignore.case = TRUE) ~ "PODEMOS-IU", 
+    grepl("PARTIDO POPULAR|PARTIT POPULAR|PP", party, ignore.case = TRUE) ~ "PARTIDO POPULAR",
+    grepl("PARTIDO SOCIALISTA|PSOE", party, ignore.case = TRUE) ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+    grepl("PARTIDO DE LA CIUDADANIA", stri_trans_general(party, "Latin-ASCII"), ignore.case = TRUE) ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+    grepl ("EUSKAL HERRIA BILDU", party, ignore.case = TRUE) ~ "EUSKAL HERRIA BILDU",
+    TRUE ~ "Other"       
+  ))
+
+election_data_tidy2 <- election_data_tidy1 |> 
+  mutate(party = case_when(
+    party == "PODEMOS" ~ "PODEMOS-IU",
+    party == "EN MAREA" ~ "PODEMOS-IU",
+    party == "EQUO" ~ "PODEMOS-IU",
+    party == "EUSKAL HERRIA BILDU (EH Bildu)" ~ "EH BILDU",
+    party == "EUSKAL HERRIA BILDU" ~ "EH BILDU",
+    party == "ESQUERRA REPUBLICANA" ~ "ESQUERRA REPUBLICANA DE CATALUNYA",
+    party == "ARALAR" ~ "EH BILDU",
+    party == "EUSKO ALKARTASUNA" ~ "EH BILDU",
+    TRUE ~ party  # keep the rest without changes
+  ))
+
+unique(election_data_tidy2$party) # to check the results
+```
+
+---
+
+
+Now we eliminate those columns that do not contribute information where there is no variance, so they do not contribute. That's why we see the values with unique() and if they have only 1, we delete the column.
+
+```{r}
+election_data_tidy3 <- election_data_tidy2 |>
+  select(-tipo_eleccion, -vuelta, -codigo_distrito_electoral)
+```
+
+Now, according to point 11, we have to discard some polls, so we filter:
+
+```{r}
+#| code-fold: true
+
+surveys_tidy2 <- surveys_tidy1 |>
+  mutate(
+    date_elec = ymd(date_elec),
+    field_date_from = ymd(field_date_from),
+    field_date_to = ymd(field_date_to),
+    fieldwork_days = as.numeric(difftime(field_date_to, field_date_from, units = "days")) # we calculate the fieldwork days
+  ) |>
+  filter(
+    date_elec >= "2008-01-01",    # elections >= 2008
+    exit_poll == "FALSE",         # no exit polls
+    size >= 750,                 # size >= 750  and known
+    fieldwork_days > 1            # fieldwork days > 1 
+    ) |>
+  select (-type_survey)
+```
+
+---
+
+### JOINS:
+
+Possible joins that may be useful:
+
+Joining cod_mun and election_data_tidy2 to have the full name of municipalities (will be useful for question 1). First we create a new variable in election_data_tidy2 that is the full code of the municipality, using the columns "codigo_ccaa", "codigo_provincia" and "codigo_municipio"
+
+```{r}
+#| code-fold: true
+election_data_tidy_new <- election_data_tidy3 |> 
+  mutate(cod_mun_full = paste(codigo_ccaa, codigo_provincia, codigo_municipio, sep = "-"))
+
+# same with glu package:
+election_data_tidy_new <- election_data_tidy3 |> 
+  mutate(cod_mun_full = glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}"))
+
+
+# left join to have the names of municipalities
+
+election_data_tidy_new <- election_data_tidy_new |> 
+  left_join(cod_mun, by = c("cod_mun_full" = "cod_mun"))
+
+```
+
+Now we have a table with the info from election_data and cod_mun.
+
+---
+
+Join Abbreviations:
+
+First, we have to clean the names from abbrev:
+
+```{r}
+#| code-fold: true
+abbrev_clean <- abbrev |>
+  mutate(denominacion = case_when(
+    denominacion %in% important_parties2 ~ denominacion,  # same parties as before          
+     grepl("PARTIDO NACIONALISTA VASCO", denominacion, ignore.case = TRUE) ~ "PARTIDO NACIONALISTA VASCO",
+    grepl("BLOQUE NACIONALISTA GALEGO", denominacion, ignore.case = TRUE) ~ "BLOQUE NACIONALISTA GALEGO",
+    grepl("VOX", denominacion, ignore.case = TRUE) ~ "VOX",
+    grepl("ESQUERRA REPUBLICANA DE CATALUNYA", denominacion, ignore.case = TRUE) ~ "ESQUERRA REPUBLICANA DE CATALUNYA",
+    grepl("CONVERGENCIA i UNIO", stri_trans_general(denominacion, "Latin-ASCII"), ignore.case = TRUE) ~ "CONVERGÈNCIA i UNIÓ",
+    grepl("MAS PAIS", stri_trans_general(denominacion, "Latin-ASCII"), ignore.case = TRUE) ~ "MÁS PAÍS",
+    grepl("PODEMOS|UNIDAS PODEMOS|UNIDOS PODEMOS|IZQUIERDA UNIDA|UNITS PODEM|XUNIES PODEMOS", stri_trans_general(denominacion, "Latin-ASCII"), ignore.case = TRUE) ~ "PODEMOS-IU", 
+    grepl("PARTIDO POPULAR|PARTIT POPULAR|PP", denominacion, ignore.case = TRUE) ~ "PARTIDO POPULAR",
+    grepl("PARTIDO SOCIALISTA|PSOE", denominacion, ignore.case = TRUE) ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+    grepl("PARTIDO DE LA CIUDADANIA", stri_trans_general(denominacion, "Latin-ASCII"), ignore.case = TRUE) ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+    grepl ("EUSKAL HERRIA BILDU", denominacion, ignore.case = TRUE) ~ "EUSKAL HERRIA BILDU",
+    TRUE ~ "Other"       
+  ))
+
+abbrev_clean2 <- abbrev_clean |> 
+  mutate(denominacion = case_when(
+    denominacion == "PODEMOS" ~ "PODEMOS-IU",
+    denominacion == "EN MAREA" ~ "PODEMOS-IU",
+    denominacion == "EQUO" ~ "PODEMOS-IU",
+    denominacion == "EUSKAL HERRIA BILDU (EH Bildu)" ~ "EH BILDU",
+    denominacion == "EUSKAL HERRIA BILDU" ~ "EH BILDU",
+    denominacion == "ESQUERRA REPUBLICANA" ~ "ESQUERRA REPUBLICANA DE CATALUNYA",
+    denominacion == "ARALAR" ~ "EH BILDU",
+    denominacion == "EUSKO ALKARTASUNA" ~ "EH BILDU",
+    TRUE ~ denominacion  # keep the rest without changes
+  ))
+
+unique(abbrev_clean2$denominacion) #To check the results
+```
+
+---
+
+```{r}
+#| code-fold: true
+# change siglas
+
+abbrev_clean2 <- abbrev_clean2  |> 
+  mutate(siglas = case_when(
+    denominacion == "PARTIDO SOCIALISTA OBRERO ESPAÑOL" ~ "PSOE",
+    denominacion == "PARTIDO POPULAR" ~ "PP",
+    denominacion == "PODEMOS-IU" ~ "PODEMOS-IU",
+    denominacion == "EH BILDU" ~ "EH-BILDU",
+    denominacion == "ESQUERRA REPUBLICANA DE CATALUNYA" ~ "ERC",
+    denominacion == "BLOQUE NACIONALISTA GALEGO" ~ "BNG",
+    denominacion == "VOX" ~ "VOX",
+    denominacion == "MÁS PAÍS" ~ "MP",
+    denominacion == "PARTIDO NACIONALISTA VASCO" ~ "EAJ-PNV",
+    denominacion == "CIUDADANOS PARTIDO DE LA CIUDADANÍA" ~ "CS",
+    denominacion == "Other" ~ "Other", #antes estaba en NA 
+    denominacion == "CONVERGÈNCIA i UNIÓ" ~ "CIU",
+    TRUE ~ siglas
+  ))
+
+unique(abbrev_clean2$siglas)
+
+# remove duplicates for the join
+abbrev_clean2_unique <- abbrev_clean2 |> 
+  distinct(denominacion, .keep_all = TRUE)
+
+```
+
+---
+
+Then we do the join, which we can do both with the survey and the election data, so we have a more complete databases. We also reorder and rename some of the new variables so it's clearer:
+
+```{r}
+#| code-fold: true
+# election data
+final_election_data <- election_data_tidy_new |> 
+  left_join(abbrev_clean2_unique, by = c("party" = "denominacion"))
+
+final_election_data <- final_election_data |> 
+  relocate(siglas, .after = party)
+
+# survey data
+
+final_survey_data <- surveys_tidy2 |> 
+  left_join(abbrev_clean2_unique, by = c("party" = "siglas"))
+
+final_survey_data <- final_survey_data |> 
+  relocate(denominacion, .before = party) |> 
+  rename(
+    abbrev = party,
+    party = denominacion
+  )
+
+final_survey_data <- final_survey_data |> 
+  mutate(party = if_else(is.na(party), "Other", party))
+
+```
+
+---
+
+### QUESTIONS
+
+### Question 1
+
+**Which party was the winner in the municipalities with more than 100,000 inhabitants (census) in each of the elections?**
+
+```{r}
+#| code-fold: true
+
+# we filter the large municipalities
+large_municipalities <- final_election_data |> 
+  filter(censo > 100000)
+
+# we sum up the total votes grouping by municipality, party, year and month
+votes_by_party <- large_municipalities |> 
+  group_by(municipio, party, anno, mes) |> 
+  summarise(total_votes = sum(ballots, na.rm = TRUE), .groups = "drop")
+
+print(votes_by_party) 
+
+# we check the winners by municipality
+winners_by_municipality <- votes_by_party |> 
+  group_by(municipio, anno, mes) |> 
+  filter(total_votes == max(total_votes)) |> 
+  ungroup()
+
+print(winners_by_municipality) 
+
+```
+
+---
+
+### Question 2
+
+**Which party was the second when the first was the PSOE? And when the first was the PP?**
+
+```{r}
+#| code-fold: true
+# first we do the same as Q1 but for all municipalities 
+
+votes_by_party_all <- final_election_data |> 
+  group_by(municipio, siglas, anno, mes) |> 
+  summarise(total_votes = sum(ballots, na.rm = TRUE), .groups = "drop")
+
+winners_by_municipality_all <- votes_by_party_all |> 
+  group_by(municipio, anno, mes) |> 
+  filter(total_votes == max(total_votes)) |> 
+  ungroup()
+
+# we extract the second when PSOE was first
+
+psoe_winner <- winners_by_municipality_all |> filter(siglas == "PSOE")
+
+second_place_psoe_first <- votes_by_party_all |> filter(municipio %in% psoe_winner$municipio) |> 
+  filter(!(siglas == "PSOE")) |> 
+  group_by(municipio, anno, mes) |> 
+  filter(total_votes == max(total_votes)) |> 
+  ungroup()
+
+results_psoe_winner <- psoe_winner |>
+  rename(winner_party = siglas, winner_votes = total_votes) |> 
+  left_join(
+    second_place_psoe_first |> 
+      rename(second_party = siglas, second_votes = total_votes),
+    by = c("municipio", "anno", "mes")
+  ) |> 
+  relocate(anno, mes, .after = municipio)
+
+results_psoe_winner # we see the wesults in column "second_party"
+
+
+```
+The results are available in the table itself
+
+---
+
+```{r}
+#| code-fold: true
+
+# we extract the second when PP was first in the same way as before
+pp_winner <- winners_by_municipality_all |> filter(siglas == "PP")
+
+second_place_pp_first <- votes_by_party_all |> filter(municipio %in% pp_winner$municipio) |> 
+  filter(!(siglas == "PP")) |> 
+  group_by(municipio, anno, mes) |> 
+  filter(total_votes == max(total_votes)) |> 
+  ungroup()
+
+results_pp_winner <- pp_winner |> rename(winner_party = siglas, winner_votes = total_votes) |> 
+  left_join(
+    second_place_pp_first |> 
+      rename(second_party = siglas, second_votes = total_votes),
+    by = c("municipio", "anno", "mes")
+  ) |> 
+  relocate(anno, mes, .after = municipio)
+
+results_pp_winner #Results in column "Second party"
+
+```
+
+---
+
+Now we see it in a graph to see the results more clearly for each year.
+
+```{r}
+#| code-fold: true
+second_party_year_psoe_summary <- results_psoe_winner |> 
+  group_by(second_party, anno) |> 
+  summarise(count = n(), .groups = "drop")
+
+ggplot(second_party_year_psoe_summary, aes(x = factor(anno), y = count, fill = second_party)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green")) +
+  labs(title = "Distribution of second places by year when PSOE wins",
+       x = "Year",
+       y = "Number of municipalities",
+       fill = "Party") +
+  theme_minimal()
+
+```
+
+A stacked bar graph for each year is a good option since we can see the differences between the most voted parties after the PSOE and at the same time we see how it has changed over the years/elections
+
+We can check how PP has always been the most voted after PSOE, although since 2015 when Podemos-IU appears and the two-party system begins to break down, other parties start to appear. Especially in 2019 we see more fracture, since VOX seems to be the third most voted, followed by Podemos and Ciudadanos.
+
+---
+
+```{r}
+#| code-fold: true
+second_party_year_pp_summary <- results_pp_winner |> 
+  group_by(second_party, anno) |> 
+  summarise(count = n(), .groups = "drop")
+
+ggplot(second_party_year_pp_summary, aes(x = factor(anno), y = count, fill = second_party)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PSOE" = "red")) +
+  labs(title = "Distribution of second places by year when PP wins",
+       x = "Year",
+       y = "Number of municipalities",
+       fill = "Party") +
+  theme_minimal()
+```
+
+Here we see much more diversity than when the PSOE was first, since people have been voting for a greater diversity of parties since 2008. This can be explained because the left is much more divided than the right and the alternative to the PP was not only PSOE but other parties. However, as before, since 2015 we see other parties appear that are voted in large proportion, such as Podemos and Ciudadanos, and in 2019 also VOX.
+
+---
+
+### Question 3
+
+**Who benefits from low turnout?**
+
+First of all, what is a low turnout? It makes reference to the electoral districts where the electoral participation is low. We consider low turnout <0,6 due to the turnout tendency in Spain (We can not compare with other countries because in some like USA 60% is high and in other like Sweden 60% is very very very very very low). So we compare participatory trend in Spain during democracy, where the average participation rate in general elections in Spain is 72.1%, so <70% would be lower than usual and <60% would be low.  (20 Minutos, 2023)
+
+
+```{r}
+#| code-fold: true
+# we calculate participation and we classify it
+turnout_election_data <- final_election_data|>
+  mutate(turnout = (participacion_1 + participacion_2) / censo) |> 
+  mutate(turnout_bin = ifelse(turnout < 0.6, "Low Turnout", "High Turnout"))
+
+# function to analyze the effect of low participation:
+
+analyze_low_turnout <- function(data, turnout_col = "turnout", ballots_col = "ballots", censo_col = "censo", party_col = "siglas") {
+  # calculate vote share
+  data <- data |>
+    group_by(codigo_municipio) |>
+    mutate(vote_share = !!sym(ballots_col) / !!sym(censo_col))
+  
+  # calculate turnout and bin it into low and high categories
+  data <- data |>
+    mutate(turnout_bin = ifelse(!!sym(turnout_col) < 0.6, 
+                                "Low Turnout", 
+                                "High Turnout"))
+  
+  # Summarize vote share by turnout category and party
+  summary <- data |>
+    group_by(!!sym(party_col), turnout_bin) |>
+    summarise(avg_vote_share = mean(vote_share, na.rm = TRUE), .groups = "drop") |>
+    arrange(desc(avg_vote_share))
+  
+  return(summary)
+}
+```
+
+---
+
+```{r}
+#| code-fold: true
+# we apply the function
+
+turnout_analysis <- analyze_low_turnout(turnout_election_data, 
+                                        turnout_col = "turnout", 
+                                        ballots_col = "ballots", 
+                                        censo_col = "censo", 
+                                        party_col = "siglas")
+print(turnout_analysis)
+
+```
+
+---
+
+Visualization of the results:
+
+```{r}
+#| code-fold: true
+
+ggplot(turnout_analysis, aes(x = siglas, y = avg_vote_share, fill = turnout_bin)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Vote Share by Turnout Level and Party",
+       x = "Party",
+       y = "Average Vote Share (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+The parties that benefit from low turnout are: Podemos-IU, VOX and Other parties, although it's not a big difference.
+
+---
+
+### Question 4
+
+**How to analyze the relationship between census and vote? Is it true that certain parties win in rural areas?**
+
+In Spain is considered "rural" a population of <30000 inhabitants according to Ley 45/2007, de 13 de diciembre, «BOE» núm. 299, de 14 de diciembre de 2007, páginas 51339 a 51349 (11 págs.)
+
+```{r}
+#| code-fold: true
+
+# classify rural vs urban
+election_data_areas <- final_election_data |> 
+  mutate(area_type = case_when(
+    censo < 30000 ~ "Rural",
+    TRUE ~ "Urban"
+  ))  |> 
+  group_by(area_type, siglas)  |> 
+  summarise(total_votes = sum(ballots, na.rm = TRUE))  |> 
+  mutate(vote_share = total_votes / sum(total_votes))
+
+# proportion of votes per party in each region
+vote_share_table <- election_data_areas |> 
+  group_by(siglas) |> 
+  mutate(total_votes_party = sum(total_votes)) |> 
+  ungroup() |> 
+  mutate(vote_share_adjusted = total_votes / total_votes_party) |> 
+  select(siglas, area_type, vote_share_adjusted) |> 
+  pivot_wider(names_from = area_type, values_from = vote_share_adjusted) |> 
+  mutate(Rural = Rural * 100, Urban = Urban * 100) |> 
+  select(siglas, Rural, Urban)
+
+vote_share_table
+```
+
+---
+
+We express the results in a plot: 
+
+```{r}
+#| code-fold: true
+
+# convert table to long format for ggplot
+vote_share_long <- vote_share_table |>  
+  pivot_longer(cols = c(Rural, Urban), names_to = "area_type", values_to = "vote_share")
+
+# plot
+ggplot(vote_share_long, aes(x = siglas, y = vote_share, fill = area_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual(values = c("Rural" = "#8FCB9B", "Urban" = "#4A90E2")) +
+  labs(title = "Vote Share by Party and Area Type (100%)", 
+       x = "Party", 
+       y = "Vote Share (%)", 
+       fill = "Area Type") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+We chose a stacked bar graph to see for each party how many of its voters are from the urban area and the rural area and we see the following:
+There are parties that stand out for having more votes from urban areas, such as Más País and Ciudadanos, perhaps explained by the policies that the have more focused on city problems (climate change, modernization, etc.).
+
+On the other hand, there are parties with a higher percentage of voters from rural areas, such as BNG, EH-Bildu, CiU and ERC. This may be due to its focus on defending regional identity, autonomy and local development, topics that resonate especially in these areas. In addition, his opposition to national parties and his historical connection with rural communities reinforce his support.
+
+---
+
+### Question 5
+
+**How to calibrate the error of the polls (remember that the polls are voting intentions at national level)?**
+
+```{r}
+#| code-fold: true
+
+# first, let's compute the total votes for each party in each election
+total_votes_by_party <- final_election_data |>
+  group_by(anno, mes, party) |>
+  summarize(total_ballots = sum(ballots, na.rm = TRUE), .groups = "drop") |> 
+   group_by(anno, mes) |> 
+   mutate(total_ballots_election = sum(total_ballots, na.rm = TRUE)) |> 
+    ungroup() |> 
+   mutate(real_percentage = total_ballots / total_ballots_election) |> 
+  select(anno, mes, party, real_percentage) |> 
+  mutate(mes = as.integer(mes)) # Convert mes to integer (there was a problem without it before)
+
+# now, let's average survey data for each party for each election
+survey_estimates <- final_survey_data |>
+  filter(!is.na(estimated_voting)) |> 
+  group_by(date_elec, party) |>
+  summarize(mean_estimated_voting = mean(estimated_voting, na.rm = TRUE), .groups = "drop")|>
+   mutate(anno = year(date_elec), mes = month(date_elec)) |> 
+    select(anno, mes, party, mean_estimated_voting)
+
+# now we'll merge the two datasets (election results and survey estimates)
+# before, we change some party names so they fit
+survey_estimates <- survey_estimates |> 
+  mutate(party = case_when(
+    party == "CIUDADANOS PARTIDO DE LA CIUDADANÍA" ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+    party == "PARTIDO POPULAR" ~ "PARTIDO POPULAR",
+    party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL" ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+    party == "UNIDAS PODEMOS-IU" ~ "PODEMOS-IU",
+    party == "VOX" ~ "VOX",
+        party == "EH-BILDU" ~ "EH BILDU",
+    TRUE ~ party
+  ))
+
+# we merge
+poll_error_data <- left_join(total_votes_by_party, survey_estimates, by = c("anno", "mes", "party"))
+
+# calculate the absolute error for each survey for each party
+poll_error_data <- poll_error_data |> 
+  mutate(error_percentage = abs(real_percentage - (mean_estimated_voting/100)))
+
+# Print the data with the error (see the table below)
+print(poll_error_data)
+
+```
+
+> FALTA INTERPRETAR AQUÍ LOS RESULTADOS
+
+---
+
+### Question 6
+
+**Which polling houses got it right the most and which ones deviated the most from the results? Check if works**
+
+```{r}
+#| code-fold: true
+
+# calculate real vote percentages from election data
+real_votes <- final_election_data |>
+  group_by(anno, mes, party) |>
+  summarize(total_ballots = sum(ballots, na.rm = TRUE), .groups = "drop") |>
+    group_by(anno, mes) |>
+      mutate(total_ballots_election = sum(total_ballots, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(real_percentage = total_ballots / total_ballots_election) |>
+  select(anno, mes, party, real_percentage) |>
+    mutate(mes = as.integer(mes)) # Convert mes to integer
+
+
+# join real vote percentages with survey data
+# adjust party names in survey data to match election data before the join
+final_survey_data_adjusted <- final_survey_data |>
+    mutate(party = case_when(
+        party == "CIUDADANOS PARTIDO DE LA CIUDADANÍA" ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+        party == "PARTIDO POPULAR" ~ "PARTIDO POPULAR",
+        party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL" ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+        party == "UNIDAS PODEMOS-IU" ~ "PODEMOS-IU",
+        party == "VOX" ~ "VOX",
+        party == "EH-BILDU" ~ "EH BILDU",
+        TRUE ~ party
+      )) |>
+    mutate(mes = month(date_elec), anno= year(date_elec))
+
+
+survey_with_real <- final_survey_data_adjusted |>
+  left_join(real_votes, by = c("anno", "mes", "party"))
+```
+
+---
+
+```{r}
+#| code-fold: true
+
+# calculate the error for each pollster
+pollster_error <- survey_with_real |>
+  group_by(pollster) |>
+  summarize(average_error = mean(abs(estimated_voting - (real_percentage * 100)), na.rm = TRUE), .groups = "drop")
+
+# identify the pollsters with the smallest average error (most accurate)
+best_pollsters <- pollster_error |>
+  arrange(average_error)
+
+# identify the pollsters with the biggest average error (least accurate)
+worst_pollsters <- pollster_error |>
+  arrange(desc(average_error))
+
+print(head(best_pollsters))
+```
+
+The Most Accurate Polling Houses were: OPINA, VOX PÚBLICA and METRA SEIS, with average errors of +/- 3-4% meaning that pollster's estimates were, on average, 3-4 percentage points different from the actual results. This error refers to a general average over the years we have considered in our data set (2008-2019)
+
+---
+
+```{r}
+#| code-fold: true
+print(head(worst_pollsters))
+```
+
+And the worst were: MYWORD, HAMALGAMA MÉTRICA ans SW DEMOSCOPIA where the pollster's estimates were, on average, 7.5 percentage points different from the actual results.
+
+---
+
+### Original Question 1
+**Participation analysis: How does participation at the polls evolve over the years (2008-2019)?**
+
+```{r}
+#| code-fold: true
+# prepare Election data
+election_data_turnout <- final_election_data |>
+  mutate(election_year = year(make_date(anno, mes))) # extract election year
+
+# calculate Total census and Votes per year
+turnout_by_year <- election_data_turnout |>
+    group_by(election_year) |>
+    summarise(
+      total_census = sum(censo, na.rm = TRUE),  # calculate total census
+      total_votes = sum(votos_candidaturas, na.rm = TRUE) + sum(votos_blancos, na.rm = TRUE), # calculate total valid votes
+        .groups = "drop"
+        )
+
+# calculate Turnout Percentage
+turnout_by_year <- turnout_by_year |>
+    mutate(turnout_percentage = (total_votes / total_census) * 100) 
+
+print(turnout_by_year)
+```
+
+---
+
+Now we visualize the results:
+
+```{r}
+#| code-fold: true
+
+ggplot(turnout_by_year, aes(x = election_year, y = turnout_percentage)) +
+  geom_line(color = "darkblue", linewidth = 1.2) +
+  geom_point(color = "darkblue", size = 3) +
+    geom_text(aes(label = sprintf("%.1f%%", turnout_percentage), # add text labels with percentage
+                vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)), # adjust vjust for 2011 and 2016
+               size = 3, color = "darkblue") + 
+  scale_x_continuous(breaks = unique(turnout_by_year$election_year)) +
+  scale_y_continuous(limits = c(65, 80), breaks = seq(65, 80, 5), expand = c(0,0)) +
+    labs(title = "Turnout Percentage in Spanish Congressional Elections (2008-2019)",
+         x = "Election Year",
+         y = "Turnout Percentage") +
+  theme_minimal() +
+    theme(panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+         panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+          panel.grid.minor.y = element_blank())
+```
+
+
+In the 2008 elections, participation reached 75%, a figure similar to that of the first democratic elections in Spain (1977), which reflected strong citizen commitment and consolidated democracy. However, in 2011, participation fell to 70.8%, which can be explained in part by the impact of the economic, social and political crisis that affected the country, generating distrust and uncertainty among citizens. In 2015, turnout rose almost 2 percentage points, probably driven by the emergence of new political actors such as Podemos, which offered an alternative to the traditional two-party system, sparking the interest and hope of many voters. However, in 2016 participation fell again, reaching the lowest level since 2008 (69.2%), reflecting possible disenchantment or political fatigue. In 2019, participation rebounded again, but did not reach the high levels of 2008, suggesting a partial recovery of electoral interest, although still far from the participation peaks observed in previous times.
+
+---
+
+### Original Question 2
+
+**Which parties received the most votes in each province from 2008 to the 2019 elections?**
+
+(Important: the number of votes is not equal to the final result translated into seats)
+
+```{r}
+# we extract the party with the most votes in each province
+resultado_max_votos <- final_election_data |>
+  filter(anno %in% c(2008, 2011, 2015, 2016, 2019)) |>
+  group_by(anno, codigo_provincia, siglas) |>
+  summarise(total_votos = sum(ballots, na.rm = TRUE)) |>
+  slice_max(order_by = total_votos, n = 1)
+
+print(resultado_max_votos)
+```
+
+---
+
+In order to see the results clearly we need a base map which we take from here: https://centrodedescargas.cnig.es/CentroDescargas/catalogo.do?Serie=CAANE , concretamente es
+Cartografía Base de España del Atlas Nacional de España 1:10.000.000	SHAPE	2006 - 2024
+
+```{r}
+provincias <- st_read("SIANE_CARTO_BASE_S_10M/vigente/se89_10_admin_prov_a_x.shp")
+
+mapa_con_votos <- provincias |>
+  left_join(resultado_max_votos, by = c("id_prov" = "codigo_provincia"))
+
+# colors for parties
+siglas_colors <- c(
+  "BNG" = "skyblue", 
+  "CS" = "#EB6109",
+  "CIU" = "#F7D117",
+  "EH BILDU" = "lightgreen",
+  "ERC" = "#FFB000",
+  "MP" = "#00B1E0",
+  "Other" = "#D3D3D3",  
+  "EAJ-PNV" = "#228B22",
+  "PP" = "#1D84CE",
+  "PSOE" = "#FF0000",
+  "PODEMOS-IU" = "#6A097D",
+  "VOX" = "#5BC035"
+)
+
+# order in the legend
+mapa_con_votos$siglas <- factor(mapa_con_votos$siglas, levels = c("PP", "PSOE", "PODEMOS-IU", "EAJ-PNV", "Other"))
+mapa_con_votos$siglas[is.na(mapa_con_votos$siglas)] <- "Other"
+
+# final map
+ggplot(mapa_con_votos) +
+  geom_sf(aes(fill = siglas)) +  
+  scale_fill_manual(values = siglas_colors) +  
+  facet_wrap(~anno) +  
+  theme_minimal() +  
+  labs(title = "Parties with the most votes per province in general elections in Spain (2008-2019)",
+       fill = "Party") +  
+  theme(
+    plot.title = element_text(size = 14, hjust = 0.5), 
+    axis.text = element_blank(), 
+    axis.ticks = element_blank(), 
+    axis.title = element_blank(), 
+    panel.grid = element_blank(), 
+    legend.position = c(0.95, 0.05), 
+    legend.justification = c(1, 0), 
+    legend.direction = "vertical" 
+  )
+
+```
+
+---
+
+### Original Question 3
+**Comparison between the percentage of votes and the allocation of seats by party (2019)**
+
+```{r}
+# filter votes for 2019
+
+votes_2019 <- votes_by_party_all |> 
+  filter(anno == 2019, mes == 11)
+
+national_total_2019 <- sum(votes_2019$total_votes)
+
+votes_2019 <- votes_2019 |> 
+  group_by(siglas) |> 
+  summarise(votes_by_party_2019 = sum(total_votes)) |> 
+  mutate(percentage_votes = (votes_by_party_2019 / national_total_2019) * 100)
+
+votes_2019 <- votes_2019 |> rename(party = siglas)
+
+votes_2019
+
+```
+
+---
+
+```{r}
+# allocate seats (escaños) to parties
+
+escanos_total <- 350
+
+party <- c("BNG", "CIU", "CS", "EAJ-PNV", "EH-BILDU", "ERC", "MP", "PODEMOS-IU", "PP", "PSOE", "VOX", "Other")
+
+escanos_asigned <- c(1, 0, 10, 6, 5, 13, 3, 35, 89, 120, 26, 42)
+
+percentage_escanos <- (escanos_asigned / escanos_total) * 100
+
+results_2019_nov <- data.frame(
+  party = party,
+  escanos_asigned = escanos_asigned,
+  percentage_escanos = percentage_escanos
+)
+
+print(results_2019_nov)
+```
+
+---
+
+```{r}
+#compare votes proportion and seats proportions
+
+total_votes_2019 <- sum(votes_2019$votes_by_party_2019)
+
+votes_2019$percentage_votes <- (votes_2019$votes_by_party_2019 / total_votes_2019) * 100
+
+comparison <- merge(results_2019_nov, votes_2019[, c("party", "percentage_votes")], by = "party")
+
+print(comparison)
+```
+
+---
+
+```{r}
+table_long <- pivot_longer(
+  comparison,
+  cols = c(percentage_escanos, percentage_votes),
+  names_to = "type",
+  values_to = "percentage"
+)
+
+table_long$party <- fct_reorder(table_long$party, table_long$percentage, .fun = max, .desc = TRUE)
+
+ggplot(table_long, aes(x = party, y = percentage, fill = type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of percentage of escaños vs votes by party",
+    x = "Party",
+    y = "Percentage (%)",
+    fill = "Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+
+Comparing the votes that a party obtains with the seats that it actually obtains in the end, we see that the large parties benefit (PSOE; PP) while the rest (smaller parties) generally lose out because they obtain many fewer seats than votes they obtained (proportionally), like Ciudadanos above all, Podemos-IU, Más País, etc.
+The discrepancy between the percentage of votes and seats is due to the D'Hondt electoral system, which favors large parties, since it distributes the seats in such a way that the parties with more votes obtain proportionally more representation. Furthermore, small parties fail to exceed the vote threshold in many constituencies, lose representation in the smallest ones, and have a more dispersed vote, which makes it difficult for them to convert those votes into seats. This means that large parties such as PSOE and PP benefit, while parties such as Ciudadanos or Podemos-IU receive fewer seats than they would proportionally deserve.
+
+---
+
+### Original Question 4
+
+**Protest vote analysis (2008-2019)**
+
+```{r}
+#| code-fold: true
+
+# calculate Total votes, Blank and Null Votes per Year
+votes_by_year <- election_data_turnout |>
+  group_by(election_year) |>
+  summarise(
+    total_votes = sum(votos_candidaturas, na.rm = TRUE) + sum(votos_blancos, na.rm = TRUE) + sum(votos_nulos, na.rm = TRUE),
+    total_blank_votes = sum(votos_blancos, na.rm = TRUE),
+    total_null_votes = sum(votos_nulos, na.rm = TRUE),
+        .groups = "drop"
+  )
+
+# calculate percentages of Blank and Null Votes
+votes_by_year <- votes_by_year |>
+  mutate(
+    blank_percentage = (total_blank_votes / total_votes) * 100,
+    null_percentage = (total_null_votes / total_votes) * 100
+  )
+
+# create Blank Votes Plot
+plot_blancos <- ggplot(votes_by_year, aes(x = election_year, y = blank_percentage)) +
+  geom_line(color = "darkgreen", linewidth = 1.2) +
+  geom_point(color = "darkgreen", size = 3) +
+  geom_text(aes(label = sprintf("%.1f%%", blank_percentage),
+                 vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)),
+                 size = 3, color = "darkgreen") + 
+  scale_x_continuous(breaks = unique(votes_by_year$election_year)) +
+  scale_y_continuous(limits = c(0, 3), breaks = seq(0, 3, 1), expand = c(0,0)) +
+  labs(title = "Blank Votes Percentage",
+       x = "Election Year",
+       y = "Percentage") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+        panel.grid.minor.y = element_blank())
+```
+
+---
+
+```{r}
+#| code-fold: true
+
+# create Null Votes Plot
+plot_nulos <- ggplot(votes_by_year, aes(x = election_year, y = null_percentage)) +
+  geom_line(color = "darkred", linewidth = 1.2) +
+  geom_point(color = "darkred", size = 3) +
+  geom_text(aes(label = sprintf("%.1f%%", null_percentage),
+                 vjust = ifelse(election_year %in% c(2008, 2016), 1.5, -1)),
+                 size = 3, color = "darkred") + 
+  scale_x_continuous(breaks = unique(votes_by_year$election_year)) +
+    scale_y_continuous(limits = c(0, 3), breaks = seq(0, 3, 1), expand = c(0,0)) +
+  labs(title = "Null Votes Percentage",
+       x = "Election Year",
+       y = "Percentage") +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray", linewidth = 0.3),
+        panel.grid.minor.y = element_blank())
+
+
+# combine and display plots
+combined_plot <- plot_blancos + plot_nulos + plot_layout(ncol = 2) # arrange vertically
+
+
+print(combined_plot) # display the combined plot
+```
+
+We see that 2011 is the year with the most blank and null votes percentages, which could be attributed to the economic crisis and the subsequent discontent with politics, which we can attribute as well to the rise of new parties. The peaks in blank and null votes in 2011 align with widespread discontent during the economic crisis and the Movimiento 15M, which protested political corruption and austerity. This reflects frustration with traditional parties (PSOE and PP) and a lack of viable alternatives at the time. The decline in blank and null votes in 2015–2016 corresponds to the rise of Podemos and Ciudadanos, which offered new political options inspired by 15M ideals. We see the numbers for both decrease again for the 2015 and 2016 election, although it slightly raises again in 2019. 
