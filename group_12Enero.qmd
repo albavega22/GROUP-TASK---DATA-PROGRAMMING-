@@ -1147,6 +1147,7 @@ ggplot(table_long, aes(x = party, y = percentage, fill = type)) +
 ---
 
 ### Original Question 4: esto es lo que mando Julia por el grupo para ver si funcionaba
+**Protest vote analysis (2008-2019)**
 
 ```{r}
 #| code-fold: true
@@ -1199,7 +1200,7 @@ plot_nulos <- ggplot(votes_by_year, aes(x = election_year, y = null_percentage))
   geom_line(color = "darkred", linewidth = 1.2) +
   geom_point(color = "darkred", size = 3) +
   geom_text(aes(label = sprintf("%.1f%%", null_percentage),
-                 vjust = ifelse(election_year %in% c(2011, 2016), 1.5, -1)),
+                 vjust = ifelse(election_year %in% c(2008, 2016), 1.5, -1)),
                  size = 3, color = "darkred") + 
   scale_x_continuous(breaks = unique(votes_by_year$election_year)) +
     scale_y_continuous(limits = c(0, 3), breaks = seq(0, 3, 1), expand = c(0,0)) +
@@ -1220,4 +1221,4 @@ combined_plot <- plot_blancos + plot_nulos + plot_layout(ncol = 2) # Arrange ver
 print(combined_plot) # Display the combined plot
 ```
 
-We see that 2011 is the year with the most blank and null votes percentages, which could be attributed to the economic crisis and the subsequent discontent with politics, which we can attribute as well to the rise of new parties. We see the numbers for both decrease again for the 2015 and 2016 election, although it slightly raises again in 2019.
+We see that 2011 is the year with the most blank and null votes percentages, which could be attributed to the economic crisis and the subsequent discontent with politics, which we can attribute as well to the rise of new parties. The peaks in blank and null votes in 2011 align with widespread discontent during the economic crisis and the Movimiento 15M, which protested political corruption and austerity. This reflects frustration with traditional parties (PSOE and PP) and a lack of viable alternatives at the time. The decline in blank and null votes in 2015–2016 corresponds to the rise of Podemos and Ciudadanos, which offered new political options inspired by 15M ideals. We see the numbers for both decrease again for the 2015 and 2016 election, although it slightly raises again in 2019. 
