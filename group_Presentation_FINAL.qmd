@@ -766,7 +766,7 @@ The Most Accurate Polling Houses were: **OPINA, METRA SEIS and VOX PÚBLICA, wit
 print(head(worst_pollsters))
 ```
 
-And the worst were: TÁBULA V, IKERFEL, MYWORD where the pollster's estimates were, approx. 6 percentage points different from the actual results.
+And the worst were: **TÁBULA V, IKERFEL and MYWORD** where the pollster's estimates were, approximately, **6 percentage points different** from the actual results.
 
 ---
 
@@ -846,7 +846,7 @@ print(resultado_max_votos)
 
 ---
 
-In order to see the results clearly we need a base map which we take from here: https://centrodedescargas.cnig.es/CentroDescargas/catalogo.do?Serie=CAANE , concretamente es
+In order to see the results clearly we need a base map which we take from here: https://centrodedescargas.cnig.es/CentroDescargas/catalogo.do?Serie=CAANE , especifically
 Cartografía Base de España del Atlas Nacional de España 1:10.000.000	SHAPE	2006 - 2024
 
 ```{r}
