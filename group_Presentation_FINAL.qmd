@@ -755,7 +755,7 @@ worst_pollsters <- pollster_error |>
 print(head(best_pollsters))
 ```
 
-The Most Accurate Polling Houses were: **OPINA, VOX PÚBLICA and METRA SEIS, with average errors of +/- 3-4%** meaning that pollster's estimates were, on average, 3-4 percentage points different from the actual results. This error refers to a general average over the years we have considered in our data set (2008-2019)
+The Most Accurate Polling Houses were: **OPINA, METRA SEIS and VOX PÚBLICA, with average errors of +/- 2-3%** meaning that pollster's estimates were, on average, 2-3 percentage points different from the actual results. This error refers to a general average over the years we have considered in our data set (2008-2019)
 
 ---
 
@@ -766,7 +766,7 @@ The Most Accurate Polling Houses were: **OPINA, VOX PÚBLICA and METRA SEIS, wit
 print(head(worst_pollsters))
 ```
 
-And the worst were: MYWORD, HAMALGAMA MÉTRICA ans SW DEMOSCOPIA where the pollster's estimates were, on average, 7.5 percentage points different from the actual results.
+And the worst were: TÁBULA V, IKERFEL, MYWORD where the pollster's estimates were, approx. 6 percentage points different from the actual results.
 
 ---
 
