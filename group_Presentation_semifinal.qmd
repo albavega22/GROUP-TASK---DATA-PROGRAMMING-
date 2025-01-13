@@ -684,12 +684,12 @@ poll_error_data <- poll_error_data |>
 # Print the data with the error (see the table below)
 print(poll_error_data)
 
+```
+
+
 The code calculates the polling error by comparing real election results with average survey estimates. It first computes the actual vote percentages (real_percentage) from election data by dividing party ballots by total ballots. Then, it calculates the average predicted vote percentages (mean_estimated_voting) from survey data. The datasets are merged, and the absolute error is computed as the difference between real percentages and polling predictions. The result is a tibble showing errors for each party in each election.
 
 Example: In 2008, the BLOQUE NACIONALISTA GALEGO had a real percentage of ~0.835% and a polling estimate of 1.08%, resulting in an error of ~0.00248.
-
-```
-
 
 ---
 
