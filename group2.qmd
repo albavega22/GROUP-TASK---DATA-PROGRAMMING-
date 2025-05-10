@@ -168,7 +168,6 @@ First, we **convert the data to tidy data**: In both "election_data" and "survey
 ```{r}
 #| code-fold: true
 
-library(tidyverse)
 surveys_tidy <- surveys |>
   pivot_longer(
     cols = 11:59,
@@ -239,8 +238,6 @@ We do the same for "election_data_tidy"
 ```{r}
 #| code-fold: true
 
-#unique(election_data_tidy$party) #To see which parties we have in surveys database and compare (SE PUEDE BORRAR) (lo quito así de momento porque hace que tarde mucho jeje)
-
 "SORTU" %in% election_data_tidy$party #To verify names of parties (SE PUEDE BORRAR)
 
 important_parties2 <- c("PARTIDO SOCIALISTA OBRERO ESPAÑOL", "PARTIDO POPULAR", "PODEMOS", "UNIDAS PODEMOS", "VOX", "ARALAR", "EUSKO ALKARTASUNA", "MÁS PAÍS", "EUSKAL HERRIA BILDU (EH Bildu)", "EN MAREA", "EQUO", "IZQUIERDA REPUBLICANA", "CONVERGÈNCIA i UNIÓ", "ESQUERRA REPUBLICANA DE CATALUNYA", "EUSKAL HERRIA BILDU", "CIUDADANOS PARTIDO DE LA CIUDADANÍA", "BLOQUE NACIONALISTA GALEGO") 
@@ -254,10 +251,9 @@ election_data_tidy1 <- election_data_tidy |>
     grepl("PARTIDO SOCIALISTA|PSOE", party, ignore.case = TRUE) ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
     grepl ("PARTIDO NACIONALISTA VASCO", party, ignore.case = TRUE) ~ "PARTIDO NACIONALISTA VASCO",
     grepl ("CIUDADANOS", party, ignore.case = TRUE) ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
-    TRUE ~ "Other"  #este de ciudadanos a lo mejor habría que poner en ambos casos "CIUDADANOS PARTIDO DE LA CIUDADANÍA, porque tal y como está ahora coge partidos que no son realmente Cs"                 
+    TRUE ~ "Other"  #este de ciudadanos a lo mejor habría que poner en ambos casos "CIUDADANOS PARTIDO DE LA CIUDADANÍA, porque tal y como está ahora coge partidos que no son realmente Cs"       
   ))
 
-unique(election_data_tidy1$party)
 
 election_data_tidy2 <- election_data_tidy1|> #Change some party names
   mutate(party = case_when(
@@ -316,9 +312,6 @@ election_data_tidy_new <- election_data_tidy2 |>
 election_data_tidy_new <- election_data_tidy_new |> 
   left_join(cod_mun, by = c("cod_mun_full" = "cod_mun"))
 
-#Verify results (se puede borrar)
-head(election_data_tidy_new |> select(cod_mun_full, municipio))
-
 ```
 
 Now we have a table with the info from election_data and cod_mun.
@@ -344,8 +337,6 @@ abbrev_clean <- abbrev |>
     grepl ("CONVERGENCIA", denominacion, ignore.case = TRUE) ~ "CONVERGÈNCIA i UNIÓ",
     TRUE ~ "Other"                                   
   ))
-
-unique(abbrev_clean$denominacion)
 
 abbrev_clean2 <- abbrev_clean |>
   mutate(denominacion = case_when(
@@ -463,14 +454,13 @@ print(winners_by_municipality) #chequear. Sale por ejemplo Podemos como ganador 
 ### Question 2
 
 Which party was the second when the first was the PSOE? And when the first was the PP?
-Anotación(Alba): entiendo que se refiere a: en los municipios en los que el primero fue el PSOE para las elecciones al congreso, ¿qué partido fue el segundo? y lo mismo para el PP. Volvemos a lo de siempre, es que pueden ser veinte cosas diferentes. Si os parece lo dejamos así y si no pues lo cambio. 
 
 ```{r}
 #| code-fold: true
 library(dplyr)
 
 votes_by_party_all <- final_election_data |> 
-  group_by(municipio, party, anno, mes) |> 
+  group_by(municipio, siglas, anno, mes) |> 
   summarise(total_votes = sum(ballots, na.rm = TRUE), .groups = "drop")
 
 winners_by_municipality_all <- votes_by_party_all |> 
@@ -480,20 +470,22 @@ winners_by_municipality_all <- votes_by_party_all |>
 
 # Second when PSOE was first
 
-psoe_winner <- winners_by_municipality_all |> filter(party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL")
+psoe_winner <- winners_by_municipality_all |> filter(siglas == "PSOE")
 
 second_place_psoe_first <- votes_by_party_all |> filter(municipio %in% psoe_winner$municipio) |> 
-  filter(!(party == "PARTIDO SOCIALISTA OBRERO ESPAÑOL")) |> 
+  filter(!(siglas == "PSOE")) |> 
   group_by(municipio, anno, mes) |> 
   filter(total_votes == max(total_votes)) |> 
   ungroup()
 
-results_psoe_winner <- psoe_winner |> rename(winner_party = party, winner_votes = total_votes) |> 
+results_psoe_winner <- psoe_winner |>
+  rename(winner_party = siglas, winner_votes = total_votes) |> 
   left_join(
     second_place_psoe_first |> 
-      rename(second_party = party, second_votes = total_votes),
+      rename(second_party = siglas, second_votes = total_votes),
     by = c("municipio", "anno", "mes")
-  )
+  ) |> 
+  relocate(anno, mes, .after = municipio)
 
 results_psoe_winner
 
@@ -503,27 +495,30 @@ results_psoe_winner
 
 ```{r}
 #| code-fold: true
+
 # Second when PP won
-pp_winner <- winners_by_municipality_all |> filter(party == "PARTIDO POPULAR")
+pp_winner <- winners_by_municipality_all |> filter(siglas == "PP")
 
 second_place_pp_first <- votes_by_party_all |> filter(municipio %in% pp_winner$municipio) |> 
-  filter(!(party == "PARTIDO POPULAR")) |> 
+  filter(!(siglas == "PP")) |> 
   group_by(municipio, anno, mes) |> 
   filter(total_votes == max(total_votes)) |> 
   ungroup()
 
-results_pp_winner <- pp_winner |> rename(winner_party = party, winner_votes = total_votes) |> 
+results_pp_winner <- pp_winner |> rename(winner_party = siglas, winner_votes = total_votes) |> 
   left_join(
     second_place_pp_first |> 
-      rename(second_party = party, second_votes = total_votes),
+      rename(second_party = siglas, second_votes = total_votes),
     by = c("municipio", "anno", "mes")
-  )
+  ) |> 
+  relocate(anno, mes, .after = municipio)
 
 results_pp_winner
 
 ```
 
 #OPTION GRAPH 1: GRAFICO DE BARRAS NORMA
+
 ```{r}
 #| code-fold: true
 library(ggplot2)
@@ -536,8 +531,10 @@ ggplot(second_party_psoe_summary, aes(x = reorder(second_party, -count), y = cou
   labs(title = "Frequency of parties getting second place when PSOE wins",
        x = "Party",
        y = "Number of municipalities") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 ```
+
 
 ```{r}
 #| code-fold: true
@@ -551,10 +548,12 @@ ggplot(second_party_pp_summary, aes(x = reorder(second_party, -count), y = count
   labs(title = "Frequency of parties getting second place when PP wins",
        x = "Party",
        y = "Number of municipalities") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 ```
 
 # GRAPH OPTION 2: GRÁFICO DE BARRAS APILADAS
+
 ```{r}
 #| code-fold: true
 second_party_year_psoe_summary <- results_psoe_winner |> 
@@ -563,8 +562,8 @@ second_party_year_psoe_summary <- results_psoe_winner |>
 
 ggplot(second_party_year_psoe_summary, aes(x = factor(anno), y = count, fill = second_party)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
-                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green")) +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green")) +
   labs(title = "Distribution of second places by year when PSOE wins",
        x = "Year",
        y = "Number of municipalities",
@@ -580,8 +579,8 @@ second_party_year_pp_summary <- results_pp_winner |>
 
 ggplot(second_party_year_pp_summary, aes(x = factor(anno), y = count, fill = second_party)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
-                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PSOE" = "red")) +
   labs(title = "Distribution of second places by year when PP wins",
        x = "Year",
        y = "Number of municipalities",
@@ -601,15 +600,9 @@ OPTION 1: USING A FUNCTION (tarda 7 siglos)
 
 # Obtain census
 
-
-
 census_data <- final_election_data |> select(municipio, censo)
 
-
-
 # Calculate turnout by using a function
-
-
 
 calculate_turnout <- function(municipio, total_votes) {
 
@@ -627,59 +620,31 @@ calculate_turnout <- function(municipio, total_votes) {
 
 }
 
-
-
 # Apply the function 
 
-
-
 votes_by_party_all <- votes_by_party_all |> 
-
   rowwise() |> 
-
   mutate(turnout = mapply(calculate_turnout, municipio, total_votes)) |> 
-
   ungroup()
-
-
 
 # Classification of municipalities depending on their turnout
 
-
-
 votes_by_party_all <- votes_by_party_all |> mutate(turnout_category = case_when(
-
   turnout < 0.4 ~ "Low",
-
   turnout >= 0.4 & turnout <= 0.7 ~ "Medium",
-
   turnout > 0.7 ~ "High"
-
 ))
-
-
 
 # How did the parties do?
 
-
-
 performance_by_turnout <- votes_by_party_all |> 
-
   group_by(turnout_category, party) |> 
-
   summarise(total_votes = sum(total_votes, na.rm = TRUE),
-
             total_census = sum(census, na.rm = TRUE)) |> 
-
   mutate(percentage_votes = total_votes / total_census) |> 
-
   ungroup()
 
-
-
 performance_by_turnout
-
-
 
 ```
 
@@ -783,21 +748,22 @@ low_turnout_winners
 # Graph 1
 
 party_counts <- low_turnout_winners |> 
-  group_by(party) |> 
+  group_by(siglas) |> 
   summarise(municipalities_won = n()) |> 
   ungroup()
 
 library(ggplot2)
 
-ggplot(party_counts, aes(x = reorder(party, -municipalities_won), y = municipalities_won, fill = party)) +
+ggplot(party_counts, aes(x = reorder(siglas, -municipalities_won), y = municipalities_won, fill = siglas)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
-                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PSOE" = "red")) +
   labs(title = "Municipalities won by party in areas of low turnout",
        x = "Party",
        y = "Municipalities (number)",
        fill = "Party") +
-  theme_minimal() 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) 
 
 ```
 ```{r}
@@ -813,7 +779,7 @@ map_data <- spain_map |>
   left_join(low_turnout_winners, by = c("name" = "municipio"))
 
 ggplot(map_data) +
-  geom_sf(aes(fill = party)) +
+  geom_sf(aes(fill = siglas)) +
   labs(title = "Parties that won in low turnout areas",
        fill = "Party") +
   theme_minimal()
@@ -823,16 +789,16 @@ ggplot(map_data) +
 # Graph 3: 
 
 party_counts2 <- low_turnout_winners |> 
-  group_by(party, anno) |> 
+  group_by(siglas, anno) |> 
   summarise(municipalities_won = n()) |> 
   ungroup()
 
 library(ggplot2)
 
-ggplot(party_counts2, aes(x = reorder(party, -municipalities_won), y = municipalities_won, fill = as.factor(anno))) +
+ggplot(party_counts2, aes(x = reorder(siglas, -municipalities_won), y = municipalities_won, fill = as.factor(anno))) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("BLOQUE NACIONALISTA GALEGO" = "pink", "CIUDADANOS PARTIDO DE LA CIUDADANÍA" = "orange",
-                    "CONVERGÈNCIA i UNIÓ" = "darkred", "EH BILDU" = "darkgreen", "ESQUERRA REPUBLICANA DE CATALUNYA" = "yellow", "Other" = "grey", "PARTIDO NACIONALISTA VASCO" = "lightblue", "PARTIDO POPULAR" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PARTIDO SOCIALISTA OBRERO ESPAÑOL" = "red")) +
+  scale_fill_manual(values = c("BNG" = "pink", "CS" = "orange",
+                    "CIU" = "darkred", "EH-BILDU" = "darkgreen", "ERC" = "yellow", "Other" = "grey", "EAJ-PNV" = "lightblue", "PP" = "blue", "PODEMOS-IU" = "purple", "VOX" = "green", "PSOE" = "red")) +
   labs(title = "Municipalities won by party in areas of low turnout",
        x = "Party",
        y = "Municipalities (number)",
@@ -841,12 +807,93 @@ ggplot(party_counts2, aes(x = reorder(party, -municipalities_won), y = municipal
 
 ```
 
+OPTION 3 (Laura):
+
+Who benefits from low turnout?
+
+```{r}
+
+election_data_vote_share <- final_election_data |>
+  group_by(codigo_municipio) |>
+  mutate(vote_share = ballots / censo)
+
+election_data_turnout <- election_data_vote_share |>
+  mutate(turnout = (participacion_1 + participacion_2) / 2) |> # Average turnout if needed
+  mutate(turnout_bin = ifelse(turnout < median(turnout, na.rm = TRUE), "Low Turnout", "High Turnout"))
+
+party_turnout_summary <- election_data_turnout |>
+  group_by(siglas, turnout_bin) |>
+  summarise(avg_vote_share = mean(vote_share, na.rm = TRUE)) |>
+  arrange(desc(avg_vote_share))
+
+ggplot(party_turnout_summary, aes(x = siglas, y = avg_vote_share, fill = turnout_bin)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Vote Share by Turnout Level and Party",
+       x = "Party",
+       y = "Average Vote Share (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+The parties that benefit from low turnout are: CIU, PNV, Bildu, ERC, PP, VOX and Other parties (NA).
+
+We can also do this with a function:
+
+```{r}
+analyze_low_turnout <- function(data, turnout_col = "turnout", ballots_col = "ballots", censo_col = "censo", party_col = "siglas") {
+  # Calculate vote share
+  data <- data |>
+    group_by(codigo_municipio) |>
+    mutate(vote_share = !!sym(ballots_col) / !!sym(censo_col))
+  
+  # Calculate turnout and bin it into low and high categories
+  data <- data |>
+    mutate(turnout_bin = ifelse(!!sym(turnout_col) < median(!!sym(turnout_col), na.rm = TRUE), 
+                                "Low Turnout", 
+                                "High Turnout"))
+  
+  # Summarize vote share by turnout category and party
+  summary <- data |>
+    group_by(!!sym(party_col), turnout_bin) |>
+    summarise(avg_vote_share = mean(vote_share, na.rm = TRUE), .groups = "drop") |>
+    arrange(desc(avg_vote_share))
+  
+  return(summary)
+}
+
+turnout_analysis <- analyze_low_turnout(election_data_turnout, 
+                                        turnout_col = "turnout", 
+                                        ballots_col = "ballots", 
+                                        censo_col = "censo", 
+                                        party_col = "siglas")
+print(turnout_analysis)
+
+
+```
+
+Visualization:
+
+```{r}
+ggplot(turnout_analysis, aes(x = siglas, y = avg_vote_share, fill = turnout_bin)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Vote Share by Turnout Level and Party",
+       x = "Party",
+       y = "Average Vote Share (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+We see we get the same results we had with the previous way of doing it.
+
 
 ### Question 4
 
 How to analyze the relationship between census and vote? Is it true that certain parties win in rural areas?
 
-OPTION 1: No me deja porque sorpresa, Mac es una mierda, pero os dejo aquí como hacerlo por si alguna puede ejecutarlo
+OPTION 1: No me deja porque sorpresa, Mac es una mierda, pero os dejo aquí como hacerlo por si alguna puede ejecutarlo. NOTA (Laura): dejo esta opción por si acaso lo que yo he hecho está mal, pero la opción 2 es más corta y mi ordenador puede con ella.
 
 ```{r}
 #| code-fold: true
@@ -857,10 +904,10 @@ final_election_data$zone_type <- ifelse(final_election_data$censo < 10000, "Rura
 
 ```{r}
 
-votes_by_party_exercise_4 <- votes_by_party_all[, c("municipio", "party", "anno", "total_votes")]
-election_data_exercise_4 <- final_election_data[, c("municipio", "censo", "anno", "party", "zone_type")]
+votes_by_party_exercise_4 <- votes_by_party_all[, c("municipio", "siglas", "anno", "total_votes")]
+election_data_exercise_4 <- final_election_data[, c("municipio", "censo", "anno", "siglas", "zone_type")]
 
-votes_with_census <- merge(votes_by_party_exercise_4, election_data_exercise_4, by = c("municipio", "anno", "party"))
+votes_with_census <- merge(votes_by_party_exercise_4, election_data_exercise_4, by = c("municipio", "anno", "siglas"))
 
 ```
 
@@ -876,7 +923,7 @@ votes_with_census$vote_share <- votes_with_census$total_votes / ave(votes_with_c
 
 library(ggplot2)
 
-ggplot(votes_with_census, aes(x = censo, y = vote_share, color = party)) +
+ggplot(votes_with_census, aes(x = censo, y = vote_share, color = siglas)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", se = FALSE) +
   labs(title = "Relation census and vote",
@@ -900,15 +947,17 @@ correlation_analysis
 Now we should be able to analyse how different parties do in rural areas
 
 ```{r}
-zone_analysis <- aggregate(vote_share ~ zone_type + party, data = votes_with_census, FUN = mean)
+zone_analysis <- aggregate(vote_share ~ zone_type + siglas, data = votes_with_census, FUN = mean)
 
 zone_analysis
 ```
 
+Nota (Laura): aquí no entiendo muy bien qué son estos resultados, pero como mi ordenador va a pedales no sé si será cosa de eso. También me salen solo 22 rows y creo que no es normal.
+
 ```{r}
 # Visualization
 
-ggplot(zone_analysis, aes(x = zone_type, y = vote_share, fill = party)) +
+ggplot(zone_analysis, aes(x = zone_type, y = vote_share, fill = siglas)) +
   geom_bar(stat = "identity", position = "fill") +
   labs(title = "Proportion of votes by party in rural and urban areas",
        x = "Type of area",
@@ -928,21 +977,49 @@ top_party_rural
 
 ```
 
+OPTION 2 (Laura):
+
+```{r}
+
+election_data_areas <- election_data_tidy_new |> 
+  mutate(area_type = case_when(
+    censo < 30000 ~ "Rural", #30000 es supuestamente lo que se considera rural
+    TRUE ~ "Urban"
+  ))  |> 
+  group_by(area_type, party)  |> 
+  summarise(total_votes = sum(ballots, na.rm = TRUE))  |> 
+  mutate(vote_share = total_votes / sum(total_votes))
+
+#visualization
+ggplot(election_data_areas, aes(x = area_type, y = vote_share, fill = party)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Vote Share by Area Type", x = "Area Type", y = "Vote Share") +
+  theme_minimal()
+
+
+
+```
+
+We don't see very drastic differences, but we see how, for example, rural areas report less votes for newer parties (like Vox or Podemos, especially the latter) and more for traditional parties like PP or PSOE.
+
+We can also do a linear model to further explore this relationship:
+
+```{r}
+lm_model <- lm(ballots ~ censo + party, data = election_data_tidy_new)
+summary(lm_model)
+
+```
+
+We see that the census can be a good predictor of ballots cast. Its effects are especially positive in parties like PP or PSOE and negative in parties like Más País.
+
+
 ### Question 5
 
 How to calibrate the error of the polls (remember that the polls are voting intentions at national level)?
 
 ```{r}
 #| code-fold: true
-
-
-```
-
-```{r}
-#| code-fold: true
-library(dplyr)
 library(stringr)
-library(lubridate)
 
 # First, let's compute the total votes for each party in each election
 total_votes_by_party <- final_election_data |>
@@ -1093,6 +1170,15 @@ ggplot(turnout_by_year, aes(x = election_year, y = turnout_percentage)) +
           panel.grid.minor.y = element_blank())
 ```
 
+### Original Question 2
+
+```{r}
+#| code-fold: true
+
+
+```
+
+
 ### Original Question 3
 
 ```{r}
@@ -1100,4 +1186,5 @@ ggplot(turnout_by_year, aes(x = election_year, y = turnout_percentage)) +
 
 
 ```
+
 
