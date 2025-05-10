@@ -1,6 +1,6 @@
 ---
 title: "Group Task"
-author: "C. Tangana (DNI: 00000000-X), Rosalía (DNI: 00000000-X), ..."
+author: "Mencía Gómez Luna (DNI: 05468738-M), Rosalía (DNI: 00000000-X), ..."
 format:
   html:
     theme: [style.scss]
@@ -159,3 +159,119 @@ In addition to what you see fit to execute, the following items are mandatory:
 Remember that the real goal is to demonstrate a mastery of the tools seen throughout the course. And that happens not only by the quantity of them used but also by the quality when executing them.
 
 **Some dataviz will be extremely positive valued**.
+
+
+## DATA PREPARATION
+
+First, we **convert the data to tidy data**: In both "election_data" and "surveys" databases, each party appears as a variable; so we create a new variable that unites all these parties so they appear as categories of a single variable "party".
+
+```{r}
+library(tidyverse)
+surveys_tidy <- surveys |>
+  pivot_longer(
+    cols = 11:59,
+    names_to = "party",      
+    values_to = "estimated voting"  #este nombre según lo q pone arriba  
+  )
+
+election_data_tidy <- election_data |>
+  pivot_longer(
+    cols = 16:471,
+    names_to = "party",      
+    values_to = "ballots" #este nombre según lo q pone arriba
+  )
+
+```
+
+Now we eliminate the non relevant parties (according to points 6 and 7) for "surveys_tidy" and "election_data_tidy"
+
+```{r}
+unique(surveys_tidy$party) # To see which parties we have in surveys database and compare (LUEGO SE PUEDE QUITAR ESTO)
+
+library(dplyr)
+important_parties <- c(
+  "PSOE", "PP", "CS", "BNG", "EAJ-PNV", "CIU", 
+  "PODEMOS", "IU", "UP", "EH-BILDU", "ERC", "VOX", "EE", "EA",
+  "EH", "PCE"
+)
+
+surveys_tidy1 <- surveys_tidy |>
+  mutate(party = case_when(
+    party %in% important_parties ~ party,  #Keep important parties
+    TRUE ~ "Other"    #New category: other parties
+  )) |>
+  
+  #Change some party names
+  mutate(party = case_when(
+    party == "PODEMOS" ~ "PODEMOS-IU",
+    party == "IU" ~ "PODEMOS-IU",
+    party == "PCE" ~ "PODEMOS-IU",
+    party == "EE" ~ "PSOE", #PSOE in País Vasco
+    party == "EA" ~ "EH-BILDU",
+    party == "EH" ~ "EH-BILDU",
+    TRUE ~ party  #Keep the rest without changes
+  ))
+```
+
+We do the same for "election_data_tidy"
+
+```{r}
+unique(election_data_tidy$party) #To see which parties we have in surveys database and compare (SE PUEDE BORRAR)
+
+"SORTU" %in% election_data_tidy$party #To verify names of parties (SE PUEDE BORRAR)
+
+important_parties <- c("PARTIDO SOCIALISTA OBRERO ESPAÑOL" , "PARTIDO POPULAR", "PODEMOS", "UNIDAS PODEMOS", "VOX", "ARALAR", "EUSKO ALKARTASUNA", "MÁS PAÍS", "EUSKAL HERRIA BILDU (EH Bildu)", "EN MAREA", "EQUO", "IZQUIERDA REPUBLICANA", "CONVERGÈNCIA i UNIÓ", "ESQUERRA REPUBLICANA DE CATALUNYA", "EUSKAL HERRIA BILDU", "CIUDADANOS PARTIDO DE LA CIUDADANÍA", "BLOQUE NACIONALISTA GALEGO") 
+
+
+election_data_tidy1 <- election_data_tidy |>
+  mutate(party = case_when(
+    party %in% important_parties ~ party,            
+    grepl("PODEMOS", party, ignore.case = TRUE) |    # (insensible a mayúsculas)
+    grepl("IU", party, ignore.case = TRUE) | 
+    grepl("IZQUIERDA UNIDA", party, ignore.case = TRUE) ~ "PODEMOS-IU", 
+    grepl("PP", party, ignore.case = TRUE) | 
+    grepl("PARTIDO POPULAR", party, ignore.case = TRUE) ~ "PARTIDO POPULAR",
+    grepl("PARTIDO SOCIALISTA", party, ignore.case = TRUE) ~ "PARTIDO SOCIALISTA OBRERO ESPAÑOL",
+    grepl ("PARTIDO NACIONALISTA VASCO", party, ignore.case = TRUE) ~ "PARTIDO NACIONALISTA VASCO",
+    grepl ("CIUDADANOS", party, ignore.case = TRUE) ~ "CIUDADANOS PARTIDO DE LA CIUDADANÍA",
+    TRUE ~ "Other"                                   
+  ))
+
+
+election_data_tidy1 <- election_data_tidy1|> #Change some party names
+  mutate(party = case_when(
+    party == "PODEMOS" ~ "PODEMOS-IU",
+    party == "EN MAREA" ~ "PODEMOS-IU",
+    party == "UNIDAS PODEMOS" ~ "PODEMOS-IU",
+    party == "EQUO" ~ "PODEMOS-IU",
+    party == "IZQUIERDA REPUBLICANA" ~ "PODEMOS-IU",
+    party == "EUSKAL HERRIA BILDU (EH Bildu)" ~ "EH BILDU",
+    party == "EUSKAL HERRIA BILDU" ~ "EH BILDU",
+    party == "ARALAR" ~ "EH BILDU",
+    party == "EUSKO ALKARTASUNA" ~ "EH BILDU",
+    TRUE ~ party  #Keep the rest without changes
+  ))
+
+unique(election_data_tidy1$party) #To check the results 
+```
+
+Now, according to point 11, we have to discard some polls, so we filter:
+
+```{r}
+library(lubridate)
+
+surveys_tidy2 <- surveys_tidy1 |>
+  mutate(
+    date_elec = ymd(date_elec),
+    field_date_from = ymd(field_date_from),
+    field_date_to = ymd(field_date_to),
+    fieldwork_days = as.numeric(difftime(field_date_to, field_date_from, units = "days")) # We calculate the fieldwork days
+  ) |>
+  filter(
+    date_elec >= "2008-01-01",    # Elections >= 2008
+    exit_poll == "FALSE",         # No exit polls
+    size >= 750,                 # Size >= 750  and known
+    fieldwork_days > 1            # Fieldwork days > 1 
+    )
+```
+
